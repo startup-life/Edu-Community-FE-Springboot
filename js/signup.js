@@ -230,7 +230,6 @@ const uploadProfileImage = () => {
         .addEventListener('change', async event => {
             const file = event.target.files[0];
             if (!file) {
-                console.log('파일이 선택되지 않았습니다.');
                 return;
             }
 
@@ -251,7 +250,6 @@ const uploadProfileImage = () => {
                 // Spring 백엔드 응답 구조: { data: { filePath: "..." } }
                 if (responseData.data && responseData.data.filePath) {
                     localStorage.setItem('profilePath', responseData.data.filePath);
-                    console.log('프로필 이미지 업로드 성공:', responseData.data.filePath);
                 } else {
                     console.error('응답 데이터 구조 오류:', responseData);
                 }

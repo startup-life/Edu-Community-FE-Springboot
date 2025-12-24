@@ -3,8 +3,6 @@ import Dialog from '../component/dialog/dialog.js';
 import Header from '../component/header/header.js';
 import {
     authCheck,
-    getCookie,
-    getServerUrl,
     prependChild,
     padTo2Digits,
 } from '../utils/function.js';
@@ -63,7 +61,6 @@ const setBoardDetail = data => {
     const contentImgElement = document.querySelector('.contentImg');
     // Spring: file 객체 (AttachFileInfo - fileId, path)
     if (data.file && data.file.path) {
-        console.log(data.file.path);
         const img = document.createElement('img');
         img.src = `http://localhost:8080${data.file.path}`;
         contentImgElement.appendChild(img);
@@ -185,7 +182,6 @@ const init = async () => {
         textareaElement.addEventListener('input', inputComment);
         commentBtnElement.addEventListener('click', addComment);
         commentBtnElement.disabled = true;
-        console.log(myInfo);
         if (data.status === HTTP_NOT_AUTHORIZED) {
             window.location.href = '/html/login.html';
         }

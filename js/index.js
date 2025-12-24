@@ -1,10 +1,9 @@
 import BoardItem from '../component/board/boardItem.js';
 import Header from '../component/header/header.js';
-import { authCheck, getServerUrl, prependChild } from '../utils/function.js';
-import { getPosts } from '../api/indexRequest.js';
+import {authCheck, prependChild} from '../utils/function.js';
+import {getPosts} from '../api/indexRequest.js';
 
 const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';  // 절대 경로 사용
-const HTTP_NOT_AUTHORIZED = 401;
 const SCROLL_THRESHOLD = 0.9;
 const INITIAL_PAGE = 0;
 const ITEMS_PER_PAGE = 10;
@@ -29,11 +28,7 @@ const getBoardItem = async (page = 0, size = 10) => {
     }
 
     const data = await response.json();
-    console.log('Posts API response:', data);
-    // Spring 백엔드 응답 구조: { data: { posts: [...], page: {...} } }
-    const posts = data.data?.posts || [];
-    console.log('Extracted posts:', posts);
-    return posts;
+    return data.data?.posts || [];
 };
 
 const setBoardItem = boardData => {
@@ -101,15 +96,12 @@ const init = async () => {
         }
 
         const data = await response.json();
-        console.log('Auth check response:', data);
 
         // 프로필 이미지: 없으면 FE 기본 이미지, 있으면 Spring 백엔드 URL
         const profileImagePath =
             data.data.profileImagePath === null || data.data.profileImagePath === undefined
                 ? DEFAULT_PROFILE_IMAGE  // FE 서버의 기본 이미지
                 : `http://localhost:8080${data.data.profileImagePath}`;  // Spring 백엔드 정적 파일
-
-        console.log('Profile image path:', profileImagePath);
 
         prependChild(
             document.body,
