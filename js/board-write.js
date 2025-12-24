@@ -3,7 +3,6 @@ import Header from '../component/header/header.js';
 import {
     authCheck,
     getQueryString,
-    getServerUrl,
     prependChild,
 } from '../utils/function.js';
 import {
@@ -135,7 +134,6 @@ const changeEventHandler = async (event, uid) => {
     } else if (uid == 'image') {
         const file = event.target.files[0]; // 사용자가 선택한 파일
         if (!file) {
-            console.log('파일이 선택되지 않았습니다.');
             return;
         }
 

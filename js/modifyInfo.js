@@ -111,7 +111,6 @@ const changeEventHandler = async (event, uid) => {
     } else if (uid == 'profile') {
         // 사용자가 선택한 파일
         const file = event.target.files[0];
-        console.log(changeData.profileImagePath);
         if (!file) {
             localStorage.removeItem('profilePath');
             profilePreview.src = DEFAULT_PROFILE_IMAGE;
