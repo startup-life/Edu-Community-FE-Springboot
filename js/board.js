@@ -120,14 +120,14 @@ const getBoardComment = async id => {
     return data.data.comments;
 };
 
-const setBoardComment = (comments, myInfo) => {
+const setBoardComment = (comments, myInfo, postId) => {
     const commentListElement = document.querySelector('.commentList');
     if (commentListElement && comments) {
         comments.forEach(comment => {
             const item = CommentItem(
                 comment,
                 myInfo.userId,
-                comment.postId,  // Spring: commentId는 CommentItem 내부에서 comment.commentId로 접근
+                postId,  // 게시글 id는 쿼리 파라미터에서 가져온 값을 사용
             );
             commentListElement.appendChild(item);
         });
@@ -206,7 +206,7 @@ const init = async () => {
         }
         setBoardDetail(pageData);
 
-        getBoardComment(pageId).then(data => setBoardComment(data, myInfo));
+        getBoardComment(pageId).then(data => setBoardComment(data, myInfo, pageId));
     } catch (error) {
         console.error(error);
     }
