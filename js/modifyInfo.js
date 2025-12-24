@@ -5,9 +5,9 @@ import {
     authCheck,
     prependChild,
     getServerUrl,
-    getCookie,
     deleteCookie,
     validNickname,
+    authenticatedFetch,
 } from '../utils/function.js';
 import { userModify, userDelete } from '../api/modifyInfoRequest.js';
 
@@ -27,10 +27,11 @@ const changeData = {
     nickname: authData.data.nickname,
     profileImagePath: authData.data.profileImagePath,
 };
+// 프로필 이미지는 정적 파일 경로이므로 /api/v1를 제거한 베이스 URL 사용
+const FILE_BASE_URL = getServerUrl().replace('/api/v1', '');
 
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
 const HTTP_OK = 200;
-const HTTP_CREATED = 201;
 
 const setData = data => {
     if (
@@ -39,14 +40,14 @@ const setData = data => {
     ) {
         profilePreview.src = DEFAULT_PROFILE_IMAGE;
     } else {
-        profilePreview.src = `${getServerUrl()}${data.profileImagePath}`;
+        profilePreview.src = `${FILE_BASE_URL}${data.profileImagePath}`;
 
         const profileImagePath = data.profileImagePath;
         const fileName = profileImagePath.split('/').pop();
         localStorage.setItem('profilePath', data.profileImagePath);
 
         const profileImage = new File(
-            [`${getServerUrl()}${profileImagePath}`],
+            [`${FILE_BASE_URL}${profileImagePath}`],
             fileName,
             { type: '' },
         );
@@ -121,17 +122,21 @@ const changeEventHandler = async (event, uid) => {
 
             // 파일 업로드를 위한 POST 요청 실행
             try {
-                const response = await fetch(`${getServerUrl()}/users/upload/profile-image`, {
-                    method: 'POST',
-                    body: formData,
-                });
+                const response = await authenticatedFetch(
+                    // Spring: 프로필 업로드 엔드포인트는 /users/me/profile-image
+                    `${getServerUrl()}/users/me/profile-image`,
+                    {
+                        method: 'POST',
+                        body: formData,
+                    },
+                );
 
                 if (!response.ok) throw new Error('서버 응답 오류');
 
                 const result = await response.json(); // 응답을 JSON으로 변환
                 localStorage.setItem('profilePath', result.data.filePath);
                 changeData.profileImagePath = result.data.filePath;
-                profilePreview.src = `${getServerUrl()}${result.data.filePath}`;
+                profilePreview.src = `${FILE_BASE_URL}${result.data.filePath}`;
             } catch (error) {
                 console.error('업로드 중 오류 발생:', error);
             }
@@ -141,16 +146,16 @@ const changeEventHandler = async (event, uid) => {
 };
 
 const sendModifyData = async () => {
-    const userId = getCookie('userId');
     const button = document.querySelector('#signupBtn');
 
     if (!button.disabled) {
         if (changeData.nickname === '') {
             Dialog('필수 정보 누락', '닉네임을 입력해주세요.');
         } else {
-            const response = await userModify(userId, changeData);
+            const response = await userModify(changeData);
 
-            if (response.status === HTTP_CREATED) {
+            // Spring: 회원 수정 성공 시 200 OK 반환
+            if (response.status === HTTP_OK) {
                 localStorage.removeItem('profilePath');
                 saveToastMessage('수정완료');
                 location.href = '/html/modifyInfo.html';
@@ -165,9 +170,8 @@ const sendModifyData = async () => {
 
 // 회원 탈퇴
 const deleteAccount = async () => {
-    const userId = getCookie('userId');
     const callback = async () => {
-        const response = await userDelete(userId);
+        const response = await userDelete();
 
         if (response.status === HTTP_OK) {
             deleteCookie('session');
@@ -244,7 +248,7 @@ const init = () => {
     const profileImage =
         authData.data.profileImagePath === null || authData.data.profileImagePath === undefined
             ? DEFAULT_PROFILE_IMAGE
-            : `${getServerUrl()}${authData.data.profileImagePath}`;
+            : `${FILE_BASE_URL}${authData.data.profileImagePath}`;
 
     prependChild(document.body, Header('커뮤니티', 2, profileImage));
     setData(authData.data);

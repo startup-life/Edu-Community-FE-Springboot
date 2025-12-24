@@ -30,6 +30,8 @@ const CommentItem = (data, writerId, postId) => {
         const p = commentInfoWrap.querySelector('p');
         // 현재 댓글 내용 저장
         const originalContent = p.innerHTML.replace(/<br>/g, '\n');
+        // 원래 p 태그의 부모 참조 저장 (나중에 복원하기 위해)
+        const parentElement = p.parentElement;
 
         // textarea 생성 및 설정
         const textarea = document.createElement('textarea');
@@ -59,7 +61,7 @@ const CommentItem = (data, writerId, postId) => {
             // 서버로 수정된 댓글 내용 전송하는 로직
             const updatedContent = textarea.value;
             const sendData = {
-                commentContent: updatedContent,
+                content: updatedContent,
             };
 
             const response = await updateComment(postId, commentId, sendData);
@@ -73,19 +75,27 @@ const CommentItem = (data, writerId, postId) => {
         const cancelButton = document.createElement('button');
         cancelButton.textContent = '취소';
         cancelButton.onclick = () => {
-            // textarea를 원래의 p 태그로 다시 변경
-            p.innerHTML = originalContent.replace(/\n/g, '<br>'); // 원래 내용으로 복원
-            commentInfoWrap.replaceChild(p, textarea); // textarea를 p로 교체
-            commentInfoWrap.removeChild(saveButton); // 저장 버튼 제거
-            commentInfoWrap.removeChild(cancelButton); // 취소 버튼 제거
+            // 새로운 p 태그 생성하여 원래 내용으로 복원
+            const newP = document.createElement('p');
+            newP.innerHTML = originalContent.replace(/\n/g, '<br>');
+            // textarea를 새로운 p 태그로 교체
+            parentElement.replaceChild(newP, textarea);
+            // 저장 버튼 제거
+            if (parentElement.contains(saveButton)) {
+                parentElement.removeChild(saveButton);
+            }
+            // 취소 버튼 제거
+            if (parentElement.contains(cancelButton)) {
+                parentElement.removeChild(cancelButton);
+            }
         };
 
         // p 태그를 textarea로 대체
-        commentInfoWrap.replaceChild(textarea, p);
+        parentElement.replaceChild(textarea, p);
         // textarea 옆에 저장 버튼 추가
-        commentInfoWrap.appendChild(saveButton);
+        parentElement.appendChild(saveButton);
         // 저장 버튼 옆에 취소 버튼 추가
-        commentInfoWrap.appendChild(cancelButton);
+        parentElement.appendChild(cancelButton);
     };
 
     const commentItem = document.createElement('div');

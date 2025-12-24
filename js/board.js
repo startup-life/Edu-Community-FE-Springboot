@@ -13,6 +13,7 @@ import {
     deletePost,
     writeComment,
     getComments,
+    increasePostViews,
 } from '../api/boardRequest.js';
 
 const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';  // 절대 경로 사용
@@ -73,7 +74,7 @@ const setBoardDetail = data => {
 
     const viewCountElement = document.querySelector('.viewCount h3');
     // Spring: hits는 int 타입이므로 숫자로 처리
-    viewCountElement.textContent = (data.hits + 1).toLocaleString();
+    viewCountElement.textContent = data.hits.toLocaleString();
 
     const commentCountElement = document.querySelector('.commentCount h3');
     // Spring: commentCount (camelCase)
@@ -120,14 +121,14 @@ const getBoardComment = async id => {
     return data.data.comments;
 };
 
-const setBoardComment = (comments, myInfo) => {
+const setBoardComment = (comments, myInfo, postId) => {
     const commentListElement = document.querySelector('.commentList');
     if (commentListElement && comments) {
         comments.forEach(comment => {
             const item = CommentItem(
                 comment,
                 myInfo.userId,
-                comment.postId,  // Spring: commentId는 CommentItem 내부에서 comment.commentId로 접근
+                postId,  // 게시글 id는 쿼리 파라미터에서 가져온 값을 사용
             );
             commentListElement.appendChild(item);
         });
@@ -198,6 +199,18 @@ const init = async () => {
 
         const pageId = getQueryString('id');
 
+        // 같은 탭에서는 조회수 증가를 한 번만 호출
+        const viewKey = `viewed_post_${pageId}`;
+        if (!sessionStorage.getItem(viewKey)) {
+            try {
+                await increasePostViews(pageId);
+            } catch (err) {
+                console.error('조회수 증가 실패', err);
+            } finally {
+                sessionStorage.setItem(viewKey, 'true');
+            }
+        }
+
         const pageData = await getBoardDetail(pageId);
 
         // Spring: author.userId와 myInfo.userId 비교 (둘 다 문자열)
@@ -206,7 +219,7 @@ const init = async () => {
         }
         setBoardDetail(pageData);
 
-        getBoardComment(pageId).then(data => setBoardComment(data, myInfo));
+        getBoardComment(pageId).then(data => setBoardComment(data, myInfo, pageId));
     } catch (error) {
         console.error(error);
     }
