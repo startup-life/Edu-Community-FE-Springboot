@@ -2,10 +2,12 @@ import { getServerUrl, padTo2Digits } from '../../utils/function.js';
 import Dialog from '../dialog/dialog.js';
 import { deleteComment, updateComment } from '../../api/commentRequest.js';
 
-const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
+const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';  // 절대 경로 사용
 const HTTP_OK = 200;
 
-const CommentItem = (data, writerId, postId, commentId) => {
+const CommentItem = (data, writerId, postId) => {
+    // Spring: commentId는 data.commentId에서 가져옴
+    const commentId = data.commentId;
     const CommentDelete = () => {
         Dialog(
             '댓글을 삭제하시겠습니까?',
@@ -93,7 +95,10 @@ const CommentItem = (data, writerId, postId, commentId) => {
 
     const img = document.createElement('img');
     img.className = 'commentImg';
-    img.src = data.profileImage === null ? DEFAULT_PROFILE_IMAGE : `${getServerUrl()}${data.profileImage}`
+    // Spring: author.profileImagePath (null이면 FE 기본 이미지, 있으면 Spring 백엔드)
+    img.src = data.author.profileImagePath === null || data.author.profileImagePath === undefined
+        ? DEFAULT_PROFILE_IMAGE
+        : `http://localhost:8080${data.author.profileImagePath}`;
     picture.appendChild(img);
 
     const commentInfoWrap = document.createElement('div');
@@ -102,16 +107,19 @@ const CommentItem = (data, writerId, postId, commentId) => {
     const infoDiv = document.createElement('div');
 
     const h3 = document.createElement('h3');
-    h3.textContent = data.nickname;
+    // Spring: author.nickname
+    h3.textContent = data.author.nickname;
     infoDiv.appendChild(h3);
 
     const h4 = document.createElement('h4');
-    const date = new Date(data.created_at);
+    // Spring: createdAt (ISO format)
+    const date = new Date(data.createdAt);
     const formattedDate = `${date.getFullYear()}-${padTo2Digits(date.getMonth() + 1)}-${padTo2Digits(date.getDate())} ${padTo2Digits(date.getHours())}:${padTo2Digits(date.getMinutes())}:${padTo2Digits(date.getSeconds())}`;
     h4.textContent = formattedDate;
     infoDiv.appendChild(h4);
 
-    if (parseInt(data.user_id, 10) === parseInt(writerId, 10)) {
+    // Spring: author.userId와 writerId 비교 (둘 다 문자열)
+    if (data.author.userId.toString() === writerId) {
         const buttonWrap = document.createElement('span');
 
         const deleteButton = document.createElement('button');
@@ -128,7 +136,8 @@ const CommentItem = (data, writerId, postId, commentId) => {
     }
 
     const p = document.createElement('p');
-    p.innerHTML = data.comment_content.replace(/(?:\r\n|\r|\n)/g, '<br>');
+    // Spring: content (camelCase)
+    p.innerHTML = data.content.replace(/(?:\r\n|\r|\n)/g, '<br>');
 
     commentInfoWrap.appendChild(infoDiv);
     commentInfoWrap.appendChild(p);

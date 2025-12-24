@@ -48,8 +48,8 @@ const sendSignupData = async () => {
     // signupData를 서버로 전송
     const response = await userSignup(props);
 
-    // 응답이 성공적으로 왔을 경우
-    if (response.status === HTTP_CREATED) {
+    // 응답이 성공적으로 왔을 경우 (Spring 백엔드는 200 OK 반환)
+    if (response.status === HTTP_OK || response.status === HTTP_CREATED) {
         localStorage.removeItem('profilePath');
         location.href = '/html/login.html';
     } else {
@@ -73,7 +73,9 @@ const changeEventHandler = async (event, uid) => {
         const helperElement = document.querySelector(
             `.inputBox p[name="${uid}"]`,
         );
-        helperElement.textContent = '';
+        if (helperElement) {
+            helperElement.textContent = '';
+        }
     }
     observeSignupData();
 };
@@ -238,12 +240,28 @@ const uploadProfileImage = () => {
             // 파일 업로드를 위한 POST 요청 실행
             try {
                 const response = await fileUpload(formData);
-                if (!response.ok) throw new Error('서버 응답 오류');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('파일 업로드 실패:', errorData);
+                    throw new Error('서버 응답 오류');
+                }
 
                 const responseData = await response.json();
-                localStorage.setItem('profilePath', responseData.data.filePath);
+
+                // Spring 백엔드 응답 구조: { data: { filePath: "..." } }
+                if (responseData.data && responseData.data.filePath) {
+                    localStorage.setItem('profilePath', responseData.data.filePath);
+                    console.log('프로필 이미지 업로드 성공:', responseData.data.filePath);
+                } else {
+                    console.error('응답 데이터 구조 오류:', responseData);
+                }
             } catch (error) {
                 console.error('업로드 중 오류 발생:', error);
+                // 사용자에게 오류 알림 (선택사항)
+                const helperElement = document.querySelector('.inputBox p[name="profile"]');
+                if (helperElement) {
+                    helperElement.textContent = '*프로필 이미지 업로드에 실패했습니다.';
+                }
             }
         });
 };

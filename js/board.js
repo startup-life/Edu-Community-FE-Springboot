@@ -15,7 +15,7 @@ import {
     getComments,
 } from '../api/boardRequest.js';
 
-const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
+const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';  // 절대 경로 사용
 const MAX_COMMENT_LENGTH = 1000;
 const HTTP_NOT_AUTHORIZED = 401;
 const HTTP_OK = 200;
@@ -41,46 +41,48 @@ const setBoardDetail = data => {
     const imgElement = document.querySelector('.img');
     const nicknameElement = document.querySelector('.nickname');
 
-    titleElement.textContent = data.post_title;
-    const date = new Date(data.created_at);
+    // Spring: title (camelCase)
+    titleElement.textContent = data.title;
+    // Spring: createdAt (ISO format)
+    const date = new Date(data.createdAt);
     const formattedDate = `${date.getFullYear()}-${padTo2Digits(date.getMonth() + 1)}-${padTo2Digits(date.getDate())} ${padTo2Digits(date.getHours())}:${padTo2Digits(date.getMinutes())}:${padTo2Digits(date.getSeconds())}`;
     createdAtElement.textContent = formattedDate;
 
+    // Spring: author.profileImagePath (nested object)
+    // 기본 이미지는 FE 서버, 업로드된 프로필은 Spring 백엔드
     imgElement.src =
-        data.profileImage === undefined || data.profileImage === null
+        data.author.profileImagePath === undefined || data.author.profileImagePath === null
             ? DEFAULT_PROFILE_IMAGE
-            : `${getServerUrl()}${data.profileImage}`;
+            : `http://localhost:8080${data.author.profileImagePath}`;
 
-    nicknameElement.textContent = data.nickname;
+    // Spring: author.nickname (nested object)
+    nicknameElement.textContent = data.author.nickname;
 
     // 바디 정보
     const contentImgElement = document.querySelector('.contentImg');
-    if (data.filePath) {
-        console.log(data.filePath);
+    // Spring: file 객체 (AttachFileInfo - fileId, path)
+    if (data.file && data.file.path) {
+        console.log(data.file.path);
         const img = document.createElement('img');
-        img.src = `${getServerUrl()}${data.filePath}`;
+        img.src = `http://localhost:8080${data.file.path}`;
         contentImgElement.appendChild(img);
     }
     const contentElement = document.querySelector('.content');
-    contentElement.textContent = data.post_content;
+    // Spring: content (camelCase)
+    contentElement.textContent = data.content;
 
     const viewCountElement = document.querySelector('.viewCount h3');
-    // hits에 K, M 이 포함되어 있을 경우 그냥 출력
-    // 포함되어 있지 않다면 + 1
-    if (data.hits.includes('K') || data.hits.includes('M')) {
-        viewCountElement.textContent = data.hits;
-    } else {
-        viewCountElement.textContent = (
-            parseInt(data.hits, 10) + 1
-        ).toLocaleString();
-    }
+    // Spring: hits는 int 타입이므로 숫자로 처리
+    viewCountElement.textContent = (data.hits + 1).toLocaleString();
 
     const commentCountElement = document.querySelector('.commentCount h3');
-    commentCountElement.textContent = data.comment_count.toLocaleString();
+    // Spring: commentCount (camelCase)
+    commentCountElement.textContent = data.commentCount.toLocaleString();
 };
 
 const setBoardModify = async (data, myInfo) => {
-    if (myInfo.idx === data.writerId) {
+    // Spring: author.userId와 myInfo.userId 비교 (둘 다 문자열)
+    if (myInfo.userId === data.author.userId.toString()) {
         const modifyElement = document.querySelector('.hidden');
         modifyElement.classList.remove('hidden');
 
@@ -103,7 +105,8 @@ const setBoardModify = async (data, myInfo) => {
 
         const modifyBtnElement2 = document.querySelector('#modifyBtn');
         modifyBtnElement2.addEventListener('click', () => {
-            window.location.href = `/html/board-modify.html?post_id=${data.post_id}`;
+            // Spring: postId (camelCase)
+            window.location.href = `/html/board-modify.html?post_id=${data.postId}`;
         });
     }
 };
@@ -113,18 +116,18 @@ const getBoardComment = async id => {
     if (!response.ok) return [];
     const data = await response.json();
     if (response.status !== HTTP_OK) return [];
-    return data.data;
+    // Spring: { data: { comments: [...] } }
+    return data.data.comments;
 };
 
-const setBoardComment = (data, myInfo) => {
+const setBoardComment = (comments, myInfo) => {
     const commentListElement = document.querySelector('.commentList');
-    if (commentListElement) {
-        data.map(event => {
+    if (commentListElement && comments) {
+        comments.forEach(comment => {
             const item = CommentItem(
-                event,
+                comment,
                 myInfo.userId,
-                event.post_id,
-                event.comment_id,
+                comment.postId,  // Spring: commentId는 CommentItem 내부에서 comment.commentId로 접근
             );
             commentListElement.appendChild(item);
         });
@@ -185,10 +188,11 @@ const init = async () => {
         if (data.status === HTTP_NOT_AUTHORIZED) {
             window.location.href = '/html/login.html';
         }
+        // 프로필 이미지: 기본 이미지는 FE 서버, 업로드된 이미지는 Spring 백엔드
         const profileImage =
             myInfo.profileImagePath === undefined || myInfo.profileImagePath === null
                 ? DEFAULT_PROFILE_IMAGE
-                : `${getServerUrl()}${myInfo.profileImagePath}`;
+                : `http://localhost:8080${myInfo.profileImagePath}`;
 
         prependChild(document.body, Header('커뮤니티', 2, profileImage));
 
@@ -196,7 +200,8 @@ const init = async () => {
 
         const pageData = await getBoardDetail(pageId);
 
-        if (parseInt(pageData.user_id, 10) === parseInt(myInfo.userId, 10)) {
+        // Spring: author.userId와 myInfo.userId 비교 (둘 다 문자열)
+        if (myInfo.userId === pageData.author.userId.toString()) {
             setBoardModify(pageData, myInfo);
         }
         setBoardDetail(pageData);

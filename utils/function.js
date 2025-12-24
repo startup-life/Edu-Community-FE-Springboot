@@ -3,8 +3,8 @@ import Dialog from '../component/dialog/dialog.js';
 export const getServerUrl = () => {
     const host = window.location.hostname;
     return host.includes('localhost')
-        ? 'http://localhost:3000'
-        : `http://${host}:3000`;
+        ? 'http://localhost:8080/api/v1'
+        : `http://${host}:8080/api/v1`;
 };
 
 export const setCookie = (cookie_name, value, days) => {
@@ -37,41 +37,120 @@ export const deleteCookie = cookie_name => {
     setCookie(cookie_name, '', -1);
 };
 
-export const serverSessionCheck = async () => {
-    const res = await fetch(`${getServerUrl()}/users/auth/check`, {
-        method: 'GET',
-        headers: {
-            session: getCookie('session'),
-            userId: getCookie('userId'),
-        },
-    });
-    return res;
+// JWT 토큰 관리 함수들
+export const getAccessToken = () => {
+    return localStorage.getItem('accessToken');
 };
 
-export const authCheck = async () => {
-    const HTTP_OK = 200;
-    const session = getCookie('session');
-    if (session === undefined) {
-        location.href = '/html/login.html';
+export const setAccessToken = (token) => {
+    localStorage.setItem('accessToken', token);
+};
+
+export const removeAccessToken = () => {
+    localStorage.removeItem('accessToken');
+};
+
+// AccessToken 갱신
+export const refreshAccessToken = async () => {
+    try {
+        const response = await fetch(`${getServerUrl()}/auth/token/refresh`, {
+            method: 'POST',
+            credentials: 'include', // RefreshToken 쿠키 포함
+        });
+
+        if (!response.ok) {
+            throw new Error('Token refresh failed');
+        }
+
+        const data = await response.json();
+        if (data.data && data.data.accessToken) {
+            setAccessToken(data.data.accessToken);
+            return data.data.accessToken;
+        }
+
+        throw new Error('Invalid token response');
+    } catch (error) {
+        console.error('Token refresh failed:', error);
+        removeAccessToken();
+        throw error;
+    }
+};
+
+// 인증된 fetch 요청 (자동 토큰 갱신 포함)
+export const authenticatedFetch = async (url, options = {}) => {
+    const accessToken = getAccessToken();
+
+    if (!accessToken) {
+        throw new Error('No access token');
     }
 
-    // const data = await serverSessionCheck();
-    const response = await serverSessionCheck();
-    if (!response || response.status !== HTTP_OK) {
-        deleteCookie('session');
-        deleteCookie('userId');
-        location.href = '/html/login.html';
+    // Authorization 헤더 추가
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${accessToken}`,
+    };
+
+    let response = await fetch(url, { ...options, headers, credentials: 'include' });
+
+    // 401 Unauthorized면 토큰 갱신 후 재시도
+    if (response.status === 401) {
+        try {
+            const newToken = await refreshAccessToken();
+            headers['Authorization'] = `Bearer ${newToken}`;
+            response = await fetch(url, { ...options, headers, credentials: 'include' });
+        } catch (refreshError) {
+            throw new Error('Authentication failed');
+        }
     }
+
     return response;
 };
 
+// 인증 상태 확인
+export const authCheck = async () => {
+    const HTTP_OK = 200;
+    const accessToken = getAccessToken();
+
+    if (!accessToken) {
+        location.href = '/html/login.html';
+        return;
+    }
+
+    try {
+        const response = await authenticatedFetch(`${getServerUrl()}/auth/me`, {
+            method: 'GET',
+        });
+
+        if (!response || response.status !== HTTP_OK) {
+            removeAccessToken();
+            location.href = '/html/login.html';
+            return;
+        }
+
+        return response;
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        removeAccessToken();
+        location.href = '/html/login.html';
+    }
+};
+
+// 로그인 여부 역방향 체크 (이미 로그인된 상태면 메인으로)
 export const authCheckReverse = async () => {
-    const session = getCookie('session');
-    if (session) {
-        const response = await serverSessionCheck();
-        const data = await response.json();
-        if (data) {
-            location.href = '/';
+    const accessToken = getAccessToken();
+
+    if (accessToken) {
+        try {
+            const response = await authenticatedFetch(`${getServerUrl()}/auth/me`, {
+                method: 'GET',
+            });
+
+            if (response.ok) {
+                location.href = '/';
+            }
+        } catch (error) {
+            // 토큰이 무효하면 그대로 로그인 페이지 유지
+            removeAccessToken();
         }
     }
 };

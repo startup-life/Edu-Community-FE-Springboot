@@ -1,50 +1,34 @@
-import { getServerUrl, getCookie } from '../utils/function.js';
+import { getServerUrl, authenticatedFetch } from '../utils/function.js';
 
 export const createPost = boardData => {
-    const result = fetch(`${getServerUrl()}/posts`, {
+    return authenticatedFetch(`${getServerUrl()}/posts`, {
         method: 'POST',
-        body: JSON.stringify(boardData),
         headers: {
             'Content-Type': 'application/json',
-            session: getCookie('session'),
-            userId: getCookie('userId'),
         },
+        body: JSON.stringify(boardData),
     });
-    return result;
 };
 
 export const updatePost = (postId, boardData) => {
-    const result = fetch(`${getServerUrl()}/posts/${postId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(boardData),
+    return authenticatedFetch(`${getServerUrl()}/posts/${postId}`, {
+        method: 'PUT',  // Spring: PUT 메서드 사용
         headers: {
             'Content-Type': 'application/json',
-            session: getCookie('session'),
-            userId: getCookie('userId'),
         },
+        body: JSON.stringify(boardData),
     });
-
-    return result;
 };
 
 export const fileUpload = formData => {
-    const result = fetch(getServerUrl() + '/posts/upload/attach-file', {
+    return authenticatedFetch(`${getServerUrl()}/posts/image`, {
         method: 'POST',
         body: formData,
     });
-
-    return result;
 };
 
 export const getBoardItem = postId => {
-    const result = fetch(getServerUrl() + `/posts/${postId}`, {
+    return authenticatedFetch(`${getServerUrl()}/posts/${postId}`, {
         method: 'GET',
-        headers: {
-            session: getCookie('session'),
-            userId: getCookie('userId'),
-        },
-        noCORS: true,
     });
-
-    return result;
 };

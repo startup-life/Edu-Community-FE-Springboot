@@ -19,7 +19,7 @@ const HTTP_CREATED = 201;
 const MAX_TITLE_LENGTH = 26;
 const MAX_CONTENT_LENGTH = 1500;
 
-const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
+const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';  // 절대 경로 사용
 
 const submitButton = document.querySelector('#submit');
 const titleInput = document.querySelector('#title');
@@ -52,8 +52,8 @@ const observeSignupData = () => {
 // 엘리먼트 값 가져오기 title, content
 const getBoardData = () => {
     return {
-        postTitle: boardWrite.title,
-        postContent: boardWrite.content,
+        title: boardWrite.title,  // Spring: title (camelCase)
+        content: boardWrite.content,  // Spring: content (camelCase)
         attachFilePath:
             localStorage.getItem('postFilePath') === null
                 ? undefined
@@ -68,7 +68,7 @@ const addBoard = async () => {
     // boardData가 false일 경우 함수 종료
     if (!boardData) return Dialog('게시글', '게시글을 입력해주세요.');
 
-    if (boardData.postTitle.length > MAX_TITLE_LENGTH)
+    if (boardData.title.length > MAX_TITLE_LENGTH)
         return Dialog('게시글', '제목은 26자 이하로 입력해주세요.');
 
     if (!isModifyMode) {
@@ -77,9 +77,10 @@ const addBoard = async () => {
 
         const data = await response.json();
 
-        if (response.status === HTTP_CREATED) {
+        // Spring: 201 CREATED, data.data는 Long (postId 자체)
+        if (response.status === HTTP_OK || response.status === HTTP_CREATED) {
             localStorage.removeItem('postFilePath');
-            window.location.href = `/html/board.html?id=${data.data.insertId}`;
+            window.location.href = `/html/board.html?id=${data.data}`;
         } else {
             const helperElement = contentHelpElement;
             helperElement.textContent = '제목, 내용을 모두 작성해주세요.';
@@ -108,28 +109,28 @@ const changeEventHandler = async (event, uid) => {
         const helperElement = contentHelpElement;
         if (!value || value == '') {
             boardWrite[uid] = '';
-            helperElement.textContent = '제목을 입력해주세요.';
+            if (helperElement) helperElement.textContent = '제목을 입력해주세요.';
         } else if (value.length > MAX_TITLE_LENGTH) {
-            helperElement.textContent = '제목은 26자 이하로 입력해주세요.';
+            if (helperElement) helperElement.textContent = '제목은 26자 이하로 입력해주세요.';
             titleInput.value = value.substring(0, MAX_TITLE_LENGTH);
             boardWrite[uid] = value.substring(0, MAX_TITLE_LENGTH);
         } else {
             boardWrite[uid] = value;
-            helperElement.textContent = '';
+            if (helperElement) helperElement.textContent = '';
         }
     } else if (uid == 'content') {
         const value = event.target.value;
         const helperElement = contentHelpElement;
         if (!value || value == '') {
             boardWrite[uid] = '';
-            helperElement.textContent = '내용을 입력해주세요.';
+            if (helperElement) helperElement.textContent = '내용을 입력해주세요.';
         } else if (value.length > MAX_CONTENT_LENGTH) {
-            helperElement.textContent = '내용은 1500자 이하로 입력해주세요.';
+            if (helperElement) helperElement.textContent = '내용은 1500자 이하로 입력해주세요.';
             contentInput.value = value.substring(0, MAX_CONTENT_LENGTH);
             boardWrite[uid] = value.substring(0, MAX_CONTENT_LENGTH);
         } else {
             boardWrite[uid] = value;
-            helperElement.textContent = '';
+            if (helperElement) helperElement.textContent = '';
         }
     } else if (uid == 'image') {
         const file = event.target.files[0]; // 사용자가 선택한 파일
@@ -139,7 +140,7 @@ const changeEventHandler = async (event, uid) => {
         }
 
         const formData = new FormData();
-        formData.append('postFile', file);
+        formData.append('attachImage', file); // Spring 백엔드에서 요구하는 필드명
 
         // 파일 업로드를 위한 POST 요청 실행
         try {
@@ -194,21 +195,23 @@ const addEvent = () => {
 };
 
 const setModifyData = data => {
-    titleInput.value = data.post_title;
-    contentInput.value = data.post_content;
+    // Spring: title, content (camelCase)
+    titleInput.value = data.title;
+    contentInput.value = data.content;
 
-    if (data.filePath) {
-        // filePath에서 파일 이름만 추출하여 표시
-        const fileName = data.filePath.split('/').pop();
+    // Spring: file 객체 (AttachFileInfo - fileId, path)
+    if (data.file && data.file.path) {
+        // file.path에서 파일 이름만 추출하여 표시
+        const fileName = data.file.path.split('/').pop();
         imagePreviewText.innerHTML =
             fileName + `<span class="deleteFile">X</span>`;
         imagePreviewText.style.display = 'block';
-        localStorage.setItem('postFilePath', data.filePath);
+        localStorage.setItem('postFilePath', data.file.path);
 
         // 이제 추출된 파일명을 사용하여 File 객체를 생성
         const attachFile = new File(
             // 실제 이미지 데이터 대신 URL을 사용
-            [`${getServerUrl()}${data.filePath}`],
+            [`http://localhost:8080${data.file.path}`],
             // 추출된 파일명
             fileName,
             // MIME 타입 지정, 실제 이미지 타입에 맞게 조정 필요
@@ -223,8 +226,8 @@ const setModifyData = data => {
         imagePreviewText.style.display = 'none';
     }
 
-    boardWrite.title = data.post_title;
-    boardWrite.content = data.post_content;
+    boardWrite.title = data.title;
+    boardWrite.content = data.content;
 
     observeSignupData();
 };
@@ -234,10 +237,11 @@ const init = async () => {
     const data = await dataResponse.json();
     const modifyId = checkModifyMode();
 
+    // 프로필 이미지: 기본 이미지는 FE 서버, 업로드된 이미지는 Spring 백엔드
     const profileImage =
         data.data.profileImagePath === undefined || data.data.profileImagePath === null
             ? DEFAULT_PROFILE_IMAGE
-            : `${getServerUrl()}${data.data.profileImagePath}`;
+            : `http://localhost:8080${data.data.profileImagePath}`;
 
     prependChild(document.body, Header('커뮤니티', 1, profileImage));
 
@@ -245,7 +249,8 @@ const init = async () => {
         isModifyMode = true;
         modifyData = await getBoardModifyData(modifyId);
 
-        if (data.idx !== modifyData.writerId) {
+        // Spring: data.data.userId와 modifyData.author.userId 비교 (둘 다 문자열)
+        if (data.data.userId !== modifyData.author.userId.toString()) {
             Dialog('권한 없음', '권한이 없습니다.', () => {
                 window.location.href = '/';
             });

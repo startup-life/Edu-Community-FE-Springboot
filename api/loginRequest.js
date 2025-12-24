@@ -1,11 +1,12 @@
-import { getServerUrl, getCookie } from '../utils/function.js';
+import { getServerUrl } from '../utils/function.js';
 
 export const userLogin = async (email, password) => {
-    const result = await fetch(`${getServerUrl()}/users/login`, {
+    const result = await fetch(`${getServerUrl()}/auth/login`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
+        credentials: 'include', // RefreshToken 쿠키 수신을 위해 필요
         body: JSON.stringify({
             email: email,
             password: password,
@@ -16,7 +17,7 @@ export const userLogin = async (email, password) => {
 
 export const checkEmail = async email => {
     const result = fetch(
-        `${getServerUrl()}/users/nickname/check?nickname=${email}`,
+        `${getServerUrl()}/auth/email/availability?email=${email}`,
         {
             method: 'GET',
             headers: {

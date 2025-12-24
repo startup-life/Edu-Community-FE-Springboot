@@ -1,4 +1,4 @@
-import { deleteCookie, getCookie, getServerUrl } from '../../utils/function.js';
+import { removeAccessToken, getAccessToken, getServerUrl } from '../../utils/function.js';
 
 const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';
 
@@ -16,8 +16,9 @@ const headerDropdownMenu = () => {
     modifyInfoLink.href = '/html/modifyInfo.html';
     modifyPasswordLink.href = '/html/modifyPassword.html';
     logoutLink.addEventListener('click', () => {
-        deleteCookie('session');
-        deleteCookie('userId');
+        // JWT 토큰 삭제 (AccessToken은 localStorage, RefreshToken은 HttpOnly 쿠키)
+        removeAccessToken();
+        // RefreshToken은 서버에서 자동으로 만료되거나, 로그아웃 API 호출 필요
         location.href = '/html/login.html';
     });
 
@@ -58,7 +59,7 @@ const Header = (
     }
 
     if (profileImage) {
-        if (getCookie('session')) {
+        if (getAccessToken()) {
             rightBtnElement = document.createElement('div');
             rightBtnElement.classList.add('profile');
 

@@ -2,7 +2,7 @@ import Header from '../component/header/header.js';
 import {
     authCheckReverse,
     prependChild,
-    setCookie,
+    setAccessToken,
     validEmail,
 } from '../utils/function.js';
 import { userLogin } from '../api/loginRequest.js';
@@ -23,28 +23,40 @@ const loginClick = async () => {
     const { id: email, password } = loginData;
     const helperTextElement = document.querySelector('.helperText');
 
-    const response = await userLogin(email, password);
-    if (!response.ok) {
+    try {
+        const response = await userLogin(email, password);
+
+        if (!response.ok) {
+            updateHelperText(
+                helperTextElement,
+                '*입력하신 계정 정보가 정확하지 않았습니다.',
+            );
+            return;
+        }
+
+        const result = await response.json();
+
+        if (response.status !== HTTP_OK || !result.data || !result.data.token) {
+            updateHelperText(
+                helperTextElement,
+                '*입력하신 계정 정보가 정확하지 않았습니다.',
+            );
+            return;
+        }
+
+        updateHelperText(helperTextElement);
+
+        // AccessToken을 localStorage에 저장 (RefreshToken은 HttpOnly 쿠키로 자동 저장됨)
+        setAccessToken(result.data.token.accessToken);
+
+        location.href = '/html/index.html';
+    } catch (error) {
+        console.error('Login failed:', error);
         updateHelperText(
             helperTextElement,
-            '*입력하신 계정 정보가 정확하지 않았습니다.',
+            '*로그인 중 오류가 발생했습니다. 다시 시도해주세요.',
         );
-        return;
     }
-
-    const result = await response.json();
-    if (response.status !== HTTP_OK) {
-        updateHelperText(
-            helperTextElement,
-            '*입력하신 계정 정보가 정확하지 않았습니다.',
-        );
-        return;
-    }
-    updateHelperText(helperTextElement);
-
-    setCookie('session', result.data.sessionId, 14);
-    setCookie('userId', result.data.userId, 14);
-    location.href = '/html/index.html';
 };
 
 const observeSignupData = () => {
@@ -129,8 +141,6 @@ const init = async () => {
     observeSignupData();
     prependChild(document.body, Header('커뮤니티', 0));
     eventSet();
-    localStorage.clear();
-    document.cookie = '';
 };
 
 init();

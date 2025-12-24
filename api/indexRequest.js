@@ -1,15 +1,10 @@
-import { getServerUrl, getCookie } from '../utils/function.js';
+import { getServerUrl, authenticatedFetch } from '../utils/function.js';
 
-export const getPosts = (offset, limit) => {
-    const result = fetch(
-        `${getServerUrl()}/posts?offset=${offset}&limit=${limit}`,
+export const getPosts = (page = 0, size = 10, sortBy = 'createdAt', direction = 'DESC') => {
+    return authenticatedFetch(
+        `${getServerUrl()}/posts?page=${page}&size=${size}&sortBy=${sortBy}&direction=${direction}`,
         {
-            headers: {
-                session: getCookie('session'),
-                userId: getCookie('userId'),
-            },
-            noCORS: true,
-        },
+            method: 'GET',
+        }
     );
-    return result;
 };

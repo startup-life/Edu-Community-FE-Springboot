@@ -1,7 +1,7 @@
-import { getServerUrl } from '../utils/function.js';
+import { getServerUrl, authenticatedFetch } from '../utils/function.js';
 
 export const userSignup = async data => {
-    const result = await fetch(`${getServerUrl()}/users/signup`, {
+    const result = await fetch(`${getServerUrl()}/auth/signup`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -13,7 +13,7 @@ export const userSignup = async data => {
 
 export const checkEmail = async email => {
     const result = await fetch(
-        `${getServerUrl()}/users/email/check?email=${email}`,
+        `${getServerUrl()}/auth/email/availability?email=${email}`,
         {
             method: 'GET',
             headers: {
@@ -26,7 +26,7 @@ export const checkEmail = async email => {
 
 export const checkNickname = async nickname => {
     const result = await fetch(
-        `${getServerUrl()}/users/nickname/check?nickname=${nickname}`,
+        `${getServerUrl()}/auth/nickname/availability?nickname=${nickname}`,
         {
             method: 'GET',
             headers: {
@@ -38,9 +38,9 @@ export const checkNickname = async nickname => {
 };
 
 export const fileUpload = async file => {
-    const result = await fetch(`${getServerUrl()}/users/upload/profile-image`, {
+    // 회원가입 시점에는 인증 불필요 (SecurityConfig permitAll 설정됨)
+    return fetch(`${getServerUrl()}/users/me/profile-image`, {
         method: 'POST',
         body: file,
     });
-    return result;
 };
