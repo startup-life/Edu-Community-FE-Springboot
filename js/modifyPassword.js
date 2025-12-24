@@ -12,15 +12,16 @@ import {
 const button = document.querySelector('#signupBtn');
 
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
-const HTTP_CREATED = 201;
+// 정적 파일은 /api/v1가 없는 베이스 URL 사용
+const FILE_BASE_URL = getServerUrl().replace('/api/v1', '');
+const HTTP_OK = 200;
 
 const dataResponse = await authCheck();
 const data = await dataResponse.json();
-const userId = data.data.userId;
 const profileImage =
     data.data.profileImagePath === undefined || data.data.profileImagePath === null
         ? DEFAULT_PROFILE_IMAGE
-        : `${getServerUrl()}${data.data.profileImagePath}`;
+        : `${FILE_BASE_URL}${data.data.profileImagePath}`;
 
 const modifyData = {
     password: '',
@@ -97,9 +98,9 @@ const addEventForInputElements = () => {
 const modifyPassword = async () => {
     const { password } = modifyData;
 
-    const response = await changePassword(userId, password);
+    const response = await changePassword(password);
 
-    if (response.status == HTTP_CREATED) {
+    if (response.status === HTTP_OK) {
         deleteCookie('session');
         deleteCookie('userId');
         localStorage.clear();

@@ -27,3 +27,10 @@ export const getComments = async postId => {
         method: 'GET',
     });
 };
+
+export const increasePostViews = async postId => {
+    // 조회수 증가 전용 엔드포인트 (POST /posts/{id}/views)
+    return authenticatedFetch(`${getServerUrl()}/posts/${postId}/views`, {
+        method: 'POST',
+    });
+};

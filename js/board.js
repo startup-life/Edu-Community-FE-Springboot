@@ -13,6 +13,7 @@ import {
     deletePost,
     writeComment,
     getComments,
+    increasePostViews,
 } from '../api/boardRequest.js';
 
 const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';  // 절대 경로 사용
@@ -73,7 +74,7 @@ const setBoardDetail = data => {
 
     const viewCountElement = document.querySelector('.viewCount h3');
     // Spring: hits는 int 타입이므로 숫자로 처리
-    viewCountElement.textContent = (data.hits + 1).toLocaleString();
+    viewCountElement.textContent = data.hits.toLocaleString();
 
     const commentCountElement = document.querySelector('.commentCount h3');
     // Spring: commentCount (camelCase)
@@ -197,6 +198,18 @@ const init = async () => {
         prependChild(document.body, Header('커뮤니티', 2, profileImage));
 
         const pageId = getQueryString('id');
+
+        // 같은 탭에서는 조회수 증가를 한 번만 호출
+        const viewKey = `viewed_post_${pageId}`;
+        if (!sessionStorage.getItem(viewKey)) {
+            try {
+                await increasePostViews(pageId);
+            } catch (err) {
+                console.error('조회수 증가 실패', err);
+            } finally {
+                sessionStorage.setItem(viewKey, 'true');
+            }
+        }
 
         const pageData = await getBoardDetail(pageId);
 

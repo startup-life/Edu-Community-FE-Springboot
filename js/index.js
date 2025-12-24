@@ -9,6 +9,17 @@ const SCROLL_THRESHOLD = 0.9;
 const INITIAL_PAGE = 0;
 const ITEMS_PER_PAGE = 10;
 
+const clearViewFlags = () => {
+    const removeKeys = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith('viewed_post_')) {
+            removeKeys.push(key);
+        }
+    }
+    removeKeys.forEach(key => sessionStorage.removeItem(key));
+};
+
 // getBoardItem 함수
 const getBoardItem = async (page = 0, size = 10) => {
     const response = await getPosts(page, size);
@@ -79,6 +90,9 @@ const addInfinityScrollEvent = () => {
 
 const init = async () => {
     try {
+        // 상세 페이지에서 저장한 조회수 플래그 초기화 (홈 진입 시 다시 증가 허용)
+        clearViewFlags();
+
         const response = await authCheck();
 
         // authCheck에서 이미 리다이렉션 처리했으면 여기까지 오지 않음
