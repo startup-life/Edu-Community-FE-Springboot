@@ -150,6 +150,11 @@ a {
     border-radius: 30px;
 }
 
+.profileUploadWrapper {
+    position: relative;
+    display: inline-block;
+}
+
 .profileUploadContainer {
     position: relative;
     display: inline-block; /* 또는 부모 요소에 따라 다른 디스플레이 속성을 설정할 수 있음 */
@@ -157,6 +162,33 @@ a {
     height: 100px; /* 프로필 이미지의 높이에 맞춤 */
     overflow: hidden; /* 컨테이너 바깥으로 나가는 내용 숨김 */
     border-radius: 50%; /* 컨테이너의 모서리를 둥글게 */
+}
+
+.profileDeleteBtn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ff4757;
+    color: #fff;
+    border: 2px solid #fff;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4);
+    z-index: 10;
+}
+
+.profileDeleteBtn:hover {
+    background-color: #ff6b7a;
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(255, 71, 87, 0.5);
 }
 
 .profileUploadButton {

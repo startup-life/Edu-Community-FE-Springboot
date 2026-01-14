@@ -35,7 +35,7 @@ const BoardItem = (
 
     const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';  // 절대 경로 사용
     // 기본 이미지는 FE 서버, 업로드된 프로필 사진은 Spring 백엔드 정적 파일
-    const profileImagePath = imgUrl === null || imgUrl === undefined
+    const profileImageUrl = imgUrl === null || imgUrl === undefined
         ? DEFAULT_PROFILE_IMAGE  // FE 서버의 기본 이미지
         : `http://localhost:8080${imgUrl}`;  // Spring 백엔드 정적 파일
     // const API_HOST = getServerUrl();
@@ -52,7 +52,7 @@ const BoardItem = (
             </div>
             <div class="writerInfo">
             <picture class="img">
-                <img src="${`${profileImagePath}`}" alt="img">
+                <img src="${`${profileImageUrl}`}" alt="img">
             </picture>
             <h2 class="writer">${writer}</h2>
         </div>

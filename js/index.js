@@ -41,7 +41,7 @@ const setBoardItem = boardData => {
                     post.createdAt,                                                 // Spring: createdAt (ISO format)
                     post.title,                                                     // Spring: title
                     post.hits,                                                      // Spring: hits
-                    post.author.profileImagePath,                                   // Spring: author.profileImagePath
+                    post.author.profileImageUrl,                                    // Spring: author.profileImageUrl
                     post.author.nickname,                                           // Spring: author.nickname
                     post.commentCount,                                              // Spring: commentCount
                     post.likeCount,                                                 // Spring: likeCount
@@ -98,14 +98,14 @@ const init = async () => {
         const data = await response.json();
 
         // 프로필 이미지: 없으면 FE 기본 이미지, 있으면 Spring 백엔드 URL
-        const profileImagePath =
-            data.data.profileImagePath === null || data.data.profileImagePath === undefined
-                ? DEFAULT_PROFILE_IMAGE  // FE 서버의 기본 이미지
-                : `http://localhost:8080${data.data.profileImagePath}`;  // Spring 백엔드 정적 파일
+        const profileImageUrl =
+            data.data.profileImageUrl === null || data.data.profileImageUrl === undefined
+                ? DEFAULT_PROFILE_IMAGE
+                : data.data.profileImageUrl;
 
         prependChild(
             document.body,
-            Header('Community', 0, profileImagePath),
+            Header('Community', 0, profileImageUrl),
         );
 
         const boardList = await getBoardItem();

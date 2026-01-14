@@ -34,3 +34,17 @@ export const increasePostViews = async postId => {
         method: 'POST',
     });
 };
+
+// 게시글 좋아요 추가
+export const likePost = async postId => {
+    return authenticatedFetch(`${getServerUrl()}/posts/${postId}/likes`, {
+        method: 'POST',
+    });
+};
+
+// 게시글 좋아요 취소
+export const unlikePost = async postId => {
+    return authenticatedFetch(`${getServerUrl()}/posts/${postId}/likes`, {
+        method: 'DELETE',
+    });
+};

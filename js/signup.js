@@ -22,7 +22,7 @@ const signupData = {
     email: '',
     password: '',
     nickname: '',
-    profileImagePath: undefined,
+    profileImageUrl: undefined,
 };
 
 const getSignupData = () => {
@@ -38,7 +38,7 @@ const getSignupData = () => {
 const sendSignupData = async () => {
     const { passwordCheck, ...props } = signupData;
     if (localStorage.getItem('profilePath')) {
-        props.profileImagePath = localStorage.getItem('profilePath');
+        props.profileImageUrl = localStorage.getItem('profilePath');
     }
 
     if (props.password > MAX_PASSWORD_LENGTH) {
@@ -247,9 +247,9 @@ const uploadProfileImage = () => {
 
                 const responseData = await response.json();
 
-                // Spring 백엔드 응답 구조: { data: { filePath: "..." } }
-                if (responseData.data && responseData.data.filePath) {
-                    localStorage.setItem('profilePath', responseData.data.filePath);
+                // Spring 백엔드 응답 구조: { code: "...", data: { fileUrl: "..." } }
+                if (responseData.data && responseData.data.fileUrl) {
+                    localStorage.setItem('profilePath', responseData.data.fileUrl);
                 } else {
                     console.error('응답 데이터 구조 오류:', responseData);
                 }

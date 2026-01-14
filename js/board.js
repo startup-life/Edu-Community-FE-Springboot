@@ -12,6 +12,8 @@ import {
     writeComment,
     getComments,
     increasePostViews,
+    likePost,
+    unlikePost,
 } from '../api/boardRequest.js';
 
 const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';  // 절대 경로 사용
@@ -47,12 +49,12 @@ const setBoardDetail = data => {
     const formattedDate = `${date.getFullYear()}-${padTo2Digits(date.getMonth() + 1)}-${padTo2Digits(date.getDate())} ${padTo2Digits(date.getHours())}:${padTo2Digits(date.getMinutes())}:${padTo2Digits(date.getSeconds())}`;
     createdAtElement.textContent = formattedDate;
 
-    // Spring: author.profileImagePath (nested object)
+    // Spring: author.profileImageUrl (nested object)
     // 기본 이미지는 FE 서버, 업로드된 프로필은 Spring 백엔드
     imgElement.src =
-        data.author.profileImagePath === undefined || data.author.profileImagePath === null
+        data.author.profileImageUrl === undefined || data.author.profileImageUrl === null
             ? DEFAULT_PROFILE_IMAGE
-            : `http://localhost:8080${data.author.profileImagePath}`;
+            : `http://localhost:8080${data.author.profileImageUrl}`;
 
     // Spring: author.nickname (nested object)
     nicknameElement.textContent = data.author.nickname;
@@ -76,11 +78,58 @@ const setBoardDetail = data => {
     const commentCountElement = document.querySelector('.commentCount h3');
     // Spring: commentCount (camelCase)
     commentCountElement.textContent = data.commentCount.toLocaleString();
+
+    // 좋아요 정보 설정
+    const likeIconElement = document.querySelector('.likeIcon');
+    const likeNumberElement = document.querySelector('.likeNumber');
+    const likeBtnElement = document.querySelector('.likeBtn');
+
+    likeNumberElement.textContent = data.likeCount.toLocaleString();
+
+    const isLiked = data.isLiked ?? data.liked ?? false;
+
+    // 좋아요 상태에 따라 아이콘 설정
+    if (isLiked) {
+        likeIconElement.textContent = '♥';
+        likeIconElement.classList.add('liked');
+    } else {
+        likeIconElement.textContent = '♡';
+        likeIconElement.classList.remove('liked');
+    }
+
+    // 좋아요 버튼 클릭 이벤트
+    likeBtnElement.addEventListener('click', async () => {
+        const postId = getQueryString('id');
+        const isCurrentlyLiked = likeIconElement.classList.contains('liked');
+
+        try {
+            let response;
+            if (isCurrentlyLiked) {
+                response = await unlikePost(postId);
+            } else {
+                response = await likePost(postId);
+            }
+
+            if (response.ok) {
+                const result = await response.json();
+                likeNumberElement.textContent = result.data.likeCount.toLocaleString();
+                if (isCurrentlyLiked) {
+                    likeIconElement.textContent = '♡';
+                    likeIconElement.classList.remove('liked');
+                } else {
+                    likeIconElement.textContent = '♥';
+                    likeIconElement.classList.add('liked');
+                }
+            }
+        } catch (error) {
+            console.error('좋아요 처리 실패', error);
+        }
+    });
 };
 
 const setBoardModify = async (data, myInfo) => {
-    // Spring: author.userId와 myInfo.userId 비교 (둘 다 문자열)
-    if (myInfo.userId === data.author.userId.toString()) {
+    // Spring: author.userId와 myInfo.id 비교
+    if (String(myInfo.id) === String(data.author.userId)) {
         const modifyElement = document.querySelector('.hidden');
         modifyElement.classList.remove('hidden');
 
@@ -123,8 +172,8 @@ const setBoardComment = (comments, myInfo, postId) => {
     if (commentListElement && comments) {
         comments.forEach(comment => {
             const item = CommentItem(
-                comment,
-                myInfo.userId,
+            comment,
+                String(myInfo.id),
                 postId,  // 게시글 id는 쿼리 파라미터에서 가져온 값을 사용
             );
             commentListElement.appendChild(item);
@@ -187,9 +236,9 @@ const init = async () => {
         }
         // 프로필 이미지: 기본 이미지는 FE 서버, 업로드된 이미지는 Spring 백엔드
         const profileImage =
-            myInfo.profileImagePath === undefined || myInfo.profileImagePath === null
+            myInfo.profileImageUrl === undefined || myInfo.profileImageUrl === null
                 ? DEFAULT_PROFILE_IMAGE
-                : `http://localhost:8080${myInfo.profileImagePath}`;
+                : myInfo.profileImageUrl;
 
         prependChild(document.body, Header('커뮤니티', 2, profileImage));
 
@@ -209,8 +258,8 @@ const init = async () => {
 
         const pageData = await getBoardDetail(pageId);
 
-        // Spring: author.userId와 myInfo.userId 비교 (둘 다 문자열)
-        if (myInfo.userId === pageData.author.userId.toString()) {
+        // Spring: author.userId와 myInfo.id 비교
+        if (String(myInfo.id) === String(pageData.author.userId)) {
             setBoardModify(pageData, myInfo);
         }
         setBoardDetail(pageData);

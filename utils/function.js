@@ -3,8 +3,8 @@ import Dialog from '../component/dialog/dialog.js';
 export const getServerUrl = () => {
     const host = window.location.hostname;
     return host.includes('localhost')
-        ? 'http://localhost:8080/api/v1'
-        : `http://${host}:8080/api/v1`;
+        ? 'http://localhost:8080/v1'
+        : `http://${host}:8080/v1`;
 };
 
 export const setCookie = (cookie_name, value, days) => {
@@ -56,16 +56,22 @@ export const refreshAccessToken = async () => {
         const response = await fetch(`${getServerUrl()}/auth/token/refresh`, {
             method: 'POST',
             credentials: 'include', // RefreshToken 쿠키 포함
+            headers: {
+                'Content-Type': 'application/json',
+            },
         });
 
         if (!response.ok) {
-            throw new Error('Token refresh failed');
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Token refresh failed with status:', response.status, errorData);
+            throw new Error(`Token refresh failed: ${response.status}`);
         }
 
-        const data = await response.json();
-        if (data.data && data.data.accessToken) {
-            setAccessToken(data.data.accessToken);
-            return data.data.accessToken;
+        const result = await response.json();
+        // 백엔드 응답 구조: { code: "...", data: { accessToken: "..." } }
+        if (result.data && result.data.accessToken) {
+            setAccessToken(result.data.accessToken);
+            return result.data.accessToken;
         }
 
         throw new Error('Invalid token response');
@@ -78,10 +84,10 @@ export const refreshAccessToken = async () => {
 
 // 인증된 fetch 요청 (자동 토큰 갱신 포함)
 export const authenticatedFetch = async (url, options = {}) => {
-    const accessToken = getAccessToken();
+    let accessToken = getAccessToken();
 
     if (!accessToken) {
-        throw new Error('No access token');
+        accessToken = await refreshAccessToken();
     }
 
     // Authorization 헤더 추가
@@ -109,15 +115,19 @@ export const authenticatedFetch = async (url, options = {}) => {
 // 인증 상태 확인
 export const authCheck = async () => {
     const HTTP_OK = 200;
-    const accessToken = getAccessToken();
+    let accessToken = getAccessToken();
 
     if (!accessToken) {
-        location.href = '/html/login.html';
-        return;
+        try {
+            accessToken = await refreshAccessToken();
+        } catch (error) {
+            location.href = '/html/login.html';
+            return;
+        }
     }
 
     try {
-        const response = await authenticatedFetch(`${getServerUrl()}/auth/me`, {
+        const response = await authenticatedFetch(`${getServerUrl()}/users/me`, {
             method: 'GET',
         });
 
@@ -137,21 +147,28 @@ export const authCheck = async () => {
 
 // 로그인 여부 역방향 체크 (이미 로그인된 상태면 메인으로)
 export const authCheckReverse = async () => {
-    const accessToken = getAccessToken();
+    let accessToken = getAccessToken();
 
-    if (accessToken) {
+    if (!accessToken) {
         try {
-            const response = await authenticatedFetch(`${getServerUrl()}/auth/me`, {
-                method: 'GET',
-            });
-
-            if (response.ok) {
-                location.href = '/';
-            }
+            accessToken = await refreshAccessToken();
         } catch (error) {
-            // 토큰이 무효하면 그대로 로그인 페이지 유지
-            removeAccessToken();
+            // Refresh 실패면 그대로 로그인 페이지 유지
+            return;
         }
+    }
+
+    try {
+        const response = await authenticatedFetch(`${getServerUrl()}/users/me`, {
+            method: 'GET',
+        });
+
+        if (response.ok) {
+            location.href = '/';
+        }
+    } catch (error) {
+        // 토큰이 무효하면 그대로 로그인 페이지 유지
+        removeAccessToken();
     }
 };
 // 이메일 유효성 검사

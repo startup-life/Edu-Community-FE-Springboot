@@ -15,24 +15,29 @@
     <h1 class="title">회원정보수정</h1>
 
     <article>
-        <div class="profileUploadContainer">
-            <img
-                    id="profilePreview"
-                    src=""
-                    alt="프로필 사진 미리보기"
-                    style="max-width: 100px; max-height: 100px"
-            />
-            <label for="profile" class="profileUploadButton">
-                변경
-            </label>
-            <input
-                    type="file"
-                    name="profile"
-                    id="profile"
-                    placeholder="프로필 사진을 업로드 해주세요"
-                    accept="image/*"
-                    style="display: none"
-            />
+        <div class="profileUploadWrapper">
+            <div class="profileUploadContainer">
+                <img
+                        id="profilePreview"
+                        src=""
+                        alt="프로필 사진 미리보기"
+                        style="max-width: 100px; max-height: 100px"
+                />
+                <label for="profile" class="profileUploadButton">
+                    변경
+                </label>
+                <input
+                        type="file"
+                        name="profile"
+                        id="profile"
+                        placeholder="프로필 사진을 업로드 해주세요"
+                        accept="image/*"
+                        style="display: none"
+                />
+            </div>
+            <button type="button" id="profileDeleteBtn" class="profileDeleteBtn" style="display: none;">
+                ✕
+            </button>
         </div>
         <div class="inputBox">
             <label>이메일</label>

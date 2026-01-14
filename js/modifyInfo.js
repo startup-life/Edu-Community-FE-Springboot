@@ -1,4 +1,4 @@
-import { checkEmail } from '../api/loginRequest.js';
+import { checkNickname } from '../api/signupRequest.js';
 import Dialog from '../component/dialog/dialog.js';
 import Header from '../component/header/header.js';
 import {
@@ -21,33 +21,62 @@ const nicknameHelpElement = document.querySelector(
 const resultElement = document.querySelector('.inputBox p[name="result"]');
 const modifyBtnElement = document.querySelector('#signupBtn');
 const profilePreview = document.querySelector('#profilePreview');
+const profileDeleteBtn = document.querySelector('#profileDeleteBtn');
 const authDataReponse = await authCheck();
 const authData = await authDataReponse.json();
 const changeData = {
     nickname: authData.data.nickname,
-    profileImagePath: authData.data.profileImagePath,
+    profileImageUrl: authData.data.profileImageUrl,
 };
-// 프로필 이미지는 정적 파일 경로이므로 /api/v1를 제거한 베이스 URL 사용
-const FILE_BASE_URL = getServerUrl().replace('/api/v1', '');
+// 프로필 이미지는 정적 파일 경로이므로 /v1를 제거한 베이스 URL 사용
+const FILE_BASE_URL = getServerUrl().replace('/v1', '');
 
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
 const HTTP_OK = 200;
 
+const resolveProfileImageUrl = profileImageUrl => {
+    if (!profileImageUrl) {
+        return null;
+    }
+    return profileImageUrl.startsWith('http')
+        ? profileImageUrl
+        : `${FILE_BASE_URL}${profileImageUrl}`;
+};
+
+// 프로필 삭제 버튼 표시/숨김
+const updateDeleteButtonVisibility = () => {
+    // 기본 이미지가 아닌 경우에만 삭제 버튼 표시
+    if (changeData.profileImageUrl) {
+        profileDeleteBtn.style.display = 'flex';
+    } else {
+        profileDeleteBtn.style.display = 'none';
+    }
+};
+
+// 프로필 이미지 삭제
+const deleteProfileImage = () => {
+    localStorage.removeItem('profilePath');
+    profilePreview.src = DEFAULT_PROFILE_IMAGE;
+    changeData.profileImageUrl = null;
+    profileInputElement.value = ''; // 파일 입력 초기화
+    updateDeleteButtonVisibility();
+    observeData();
+};
+
 const setData = data => {
-    if (
-        // data.profileImagePath === DEFAULT_PROFILE_IMAGE ||
-        data.profileImagePath === null
-    ) {
+    const profileImageUrl = data.profileImageUrl;
+    const resolvedProfileImageUrl = resolveProfileImageUrl(profileImageUrl);
+
+    if (!resolvedProfileImageUrl) {
         profilePreview.src = DEFAULT_PROFILE_IMAGE;
     } else {
-        profilePreview.src = `${FILE_BASE_URL}${data.profileImagePath}`;
+        profilePreview.src = resolvedProfileImageUrl;
 
-        const profileImagePath = data.profileImagePath;
-        const fileName = profileImagePath.split('/').pop();
-        localStorage.setItem('profilePath', data.profileImagePath);
+        const fileName = profileImageUrl.split('/').pop();
+        localStorage.setItem('profilePath', profileImageUrl);
 
         const profileImage = new File(
-            [`${FILE_BASE_URL}${profileImagePath}`],
+            [resolvedProfileImageUrl],
             fileName,
             { type: '' },
         );
@@ -58,13 +87,14 @@ const setData = data => {
     }
     emailTextElement.textContent = data.email;
     nicknameInputElement.value = data.nickname;
+    updateDeleteButtonVisibility();
 };
 
 const observeData = () => {
     const button = document.querySelector('#signupBtn');
     if (
         authData.data.nickname !== changeData.nickname ||
-        authData.data.profileImagePath !== changeData.profileImagePath
+        authData.data.profileImageUrl !== changeData.profileImageUrl
     ) {
         button.disabled = false;
         button.style.backgroundColor = '#7F6AEE';
@@ -87,7 +117,7 @@ const changeEventHandler = async (event, uid) => {
             helperElement.textContent =
                 '*닉네임은 2~10자의 영문자, 한글 또는 숫자만 사용할 수 있습니다. 특수 문자와 띄어쓰기는 사용할 수 없습니다.';
         } else {
-            const response = await checkEmail(value);
+            const response = await checkNickname(value);
             if (response.status === HTTP_OK) {
                 helperElement.textContent = '';
                 isComplete = true;
@@ -114,7 +144,8 @@ const changeEventHandler = async (event, uid) => {
         if (!file) {
             localStorage.removeItem('profilePath');
             profilePreview.src = DEFAULT_PROFILE_IMAGE;
-            changeData.profileImagePath = null;
+            changeData.profileImageUrl = null;
+            updateDeleteButtonVisibility();
         } else {
             const formData = new FormData();
             formData.append('profileImage', file);
@@ -133,9 +164,11 @@ const changeEventHandler = async (event, uid) => {
                 if (!response.ok) throw new Error('서버 응답 오류');
 
                 const result = await response.json(); // 응답을 JSON으로 변환
-                localStorage.setItem('profilePath', result.data.filePath);
-                changeData.profileImagePath = result.data.filePath;
-                profilePreview.src = `${FILE_BASE_URL}${result.data.filePath}`;
+                // 백엔드 응답 구조: { code: "...", data: { fileUrl: "..." } }
+                localStorage.setItem('profilePath', result.data.fileUrl);
+                changeData.profileImageUrl = result.data.fileUrl;
+                profilePreview.src = resolveProfileImageUrl(result.data.fileUrl);
+                updateDeleteButtonVisibility();
             } catch (error) {
                 console.error('업로드 중 오류 발생:', error);
             }
@@ -197,6 +230,7 @@ const addEvent = () => {
     );
     modifyBtnElement.addEventListener('click', async () => sendModifyData());
     withdrawBtnElement.addEventListener('click', async () => deleteAccount());
+    profileDeleteBtn.addEventListener('click', () => deleteProfileImage());
 };
 
 const showToast = (message, duration = 3000, callback = null) => {
@@ -245,9 +279,7 @@ const displayToastFromStorage = () => {
 
 const init = () => {
     const profileImage =
-        authData.data.profileImagePath === null || authData.data.profileImagePath === undefined
-            ? DEFAULT_PROFILE_IMAGE
-            : `${FILE_BASE_URL}${authData.data.profileImagePath}`;
+        resolveProfileImageUrl(authData.data.profileImageUrl) || DEFAULT_PROFILE_IMAGE;
 
     prependChild(document.body, Header('커뮤니티', 2, profileImage));
     setData(authData.data);
