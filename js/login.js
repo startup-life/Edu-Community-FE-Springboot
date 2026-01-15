@@ -3,12 +3,14 @@ import {
     authCheckReverse,
     prependChild,
     setAccessToken,
+    debounce,
     validEmail,
 } from '../utils/function.js';
 import { userLogin } from '../api/loginRequest.js';
 
 const HTTP_OK = 200;
 const MAX_PASSWORD_LENGTH = 8;
+const INPUT_DEBOUNCE_MS = 500;
 
 const loginData = {
     id: '',
@@ -18,6 +20,22 @@ const loginData = {
 const updateHelperText = (helperTextElement, message = '') => {
     helperTextElement.textContent = message;
 };
+
+const validateEmailHelper = value => {
+    const helperTextElement = document.querySelector('.helperText');
+    const isValidEmail = validEmail(value);
+    updateHelperText(
+        helperTextElement,
+        isValidEmail || !value
+            ? ''
+            : '*올바른 이메일 주소 형식을 입력해주세요. (예: example@example.com)',
+    );
+    if (value) {
+        lottieAnimation(isValidEmail ? 1 : 2);
+    }
+};
+
+const debouncedEmailHelper = debounce(validateEmailHelper, INPUT_DEBOUNCE_MS);
 
 const loginClick = async () => {
     const { id: email, password } = loginData;
@@ -51,7 +69,6 @@ const loginClick = async () => {
 
         location.href = '/html/index.html';
     } catch (error) {
-        console.error('Login failed:', error);
         updateHelperText(
             helperTextElement,
             '*로그인 중 오류가 발생했습니다. 다시 시도해주세요.',
@@ -62,15 +79,8 @@ const loginClick = async () => {
 const observeSignupData = () => {
     const { id: email, password } = loginData;
     const button = document.querySelector('#login');
-    const helperTextElement = document.querySelector('.helperText');
 
     const isValidEmail = validEmail(email);
-    updateHelperText(
-        helperTextElement,
-        isValidEmail || !email
-            ? ''
-            : '*올바른 이메일 주소 형식을 입력해주세요. (예: example@example.com)',
-    );
 
     button.disabled = !(
         email &&
@@ -98,14 +108,17 @@ const eventSet = () => {
 
         if (field === 'id') {
             inputElement.addEventListener('focusout', event =>
-                lottieAnimation(validEmail(event.target.value) ? 1 : 2),
+                validateEmailHelper(event.target.value),
             );
         }
     });
 
     document
         .getElementById('id')
-        .addEventListener('input', event => validateEmail(event.target));
+        .addEventListener('input', event => {
+            validateEmail(event.target);
+            debouncedEmailHelper(event.target.value);
+        });
 };
 
 const onChangeHandler = (event, uid) => {

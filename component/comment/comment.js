@@ -33,25 +33,63 @@ const CommentItem = (data, writerId, postId) => {
         // 원래 p 태그의 부모 참조 저장 (나중에 복원하기 위해)
         const parentElement = p.parentElement;
 
+        // 수정 컨테이너 생성
+        const editContainer = document.createElement('div');
+        editContainer.className = 'comment-edit-container';
+
         // textarea 생성 및 설정
         const textarea = document.createElement('textarea');
+        textarea.className = 'comment-edit-textarea';
         textarea.value = originalContent;
-        textarea.style.width = '100%'; // textarea 너비 설정
-        textarea.style.height = '100px'; // textarea 높이 설정
-        textarea.maxLength = 1500; // 최대 글자 수 제한
+        textarea.maxLength = 1500;
+        textarea.placeholder = '댓글을 입력해주세요...';
+
+        // 푸터 (글자 수 + 버튼)
+        const footer = document.createElement('div');
+        footer.className = 'comment-edit-footer';
+
+        // 글자 수 카운터
+        const charCount = document.createElement('span');
+        charCount.className = 'comment-char-count';
+        charCount.textContent = `${originalContent.length} / 1,500`;
+
+        // 버튼 그룹
+        const buttonGroup = document.createElement('div');
+        buttonGroup.className = 'comment-edit-buttons';
 
         // 사용자가 입력할 때마다 글자 수 체크
         textarea.addEventListener('input', () => {
             if (textarea.value.length > 1500) {
                 // 1500자를 초과하는 경우, 초과분을 자름
                 textarea.value = textarea.value.substring(0, 1500);
-                // 사용자에게 경고 메시지를 보여주는 방법도 고려할 수 있음
-                // alert('댓글은 1500자를 초과할 수 없습니다.');
             }
+            // 글자 수 업데이트
+            charCount.textContent = `${textarea.value.length.toLocaleString()} / 1,500`;
+            // 1400자 이상이면 경고 스타일
+            if (textarea.value.length >= 1400) {
+                charCount.classList.add('warning');
+            } else {
+                charCount.classList.remove('warning');
+            }
+            // 빈 내용이면 저장 버튼 비활성화
+            saveButton.disabled = textarea.value.length === 0;
         });
+
+        // 취소 버튼 생성 및 설정
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'comment-edit-btn cancel';
+        cancelButton.textContent = '취소';
+        cancelButton.onclick = () => {
+            // 새로운 p 태그 생성하여 원래 내용으로 복원
+            const newP = document.createElement('p');
+            newP.innerHTML = originalContent.replace(/\n/g, '<br>');
+            // 수정 컨테이너를 새로운 p 태그로 교체
+            parentElement.replaceChild(newP, editContainer);
+        };
 
         // 수정 완료(저장) 버튼 생성 및 설정
         const saveButton = document.createElement('button');
+        saveButton.className = 'comment-edit-btn save';
         saveButton.textContent = '저장';
         saveButton.onclick = async () => {
             if (textarea.value.length === 0) {
@@ -71,31 +109,20 @@ const CommentItem = (data, writerId, postId) => {
             location.href = '/html/board.html?id=' + postId;
         };
 
-        // 취소 버튼 생성 및 설정
-        const cancelButton = document.createElement('button');
-        cancelButton.textContent = '취소';
-        cancelButton.onclick = () => {
-            // 새로운 p 태그 생성하여 원래 내용으로 복원
-            const newP = document.createElement('p');
-            newP.innerHTML = originalContent.replace(/\n/g, '<br>');
-            // textarea를 새로운 p 태그로 교체
-            parentElement.replaceChild(newP, textarea);
-            // 저장 버튼 제거
-            if (parentElement.contains(saveButton)) {
-                parentElement.removeChild(saveButton);
-            }
-            // 취소 버튼 제거
-            if (parentElement.contains(cancelButton)) {
-                parentElement.removeChild(cancelButton);
-            }
-        };
+        // 요소 조립
+        buttonGroup.appendChild(cancelButton);
+        buttonGroup.appendChild(saveButton);
+        footer.appendChild(charCount);
+        footer.appendChild(buttonGroup);
+        editContainer.appendChild(textarea);
+        editContainer.appendChild(footer);
 
-        // p 태그를 textarea로 대체
-        parentElement.replaceChild(textarea, p);
-        // textarea 옆에 저장 버튼 추가
-        parentElement.appendChild(saveButton);
-        // 저장 버튼 옆에 취소 버튼 추가
-        parentElement.appendChild(cancelButton);
+        // p 태그를 수정 컨테이너로 대체
+        parentElement.replaceChild(editContainer, p);
+
+        // textarea에 포커스
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
     };
 
     const commentItem = document.createElement('div');
@@ -105,10 +132,10 @@ const CommentItem = (data, writerId, postId) => {
 
     const img = document.createElement('img');
     img.className = 'commentImg';
-    // Spring: author.profileImagePath (null이면 FE 기본 이미지, 있으면 Spring 백엔드)
-    img.src = data.author.profileImagePath === null || data.author.profileImagePath === undefined
+    // Spring: author.profileImageUrl (null이면 FE 기본 이미지, 있으면 Spring 백엔드)
+    img.src = data.author.profileImageUrl === null || data.author.profileImageUrl === undefined
         ? DEFAULT_PROFILE_IMAGE
-        : `http://localhost:8080${data.author.profileImagePath}`;
+        : `http://localhost:8080${data.author.profileImageUrl}`;
     picture.appendChild(img);
 
     const commentInfoWrap = document.createElement('div');

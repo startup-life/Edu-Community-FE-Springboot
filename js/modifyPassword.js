@@ -16,12 +16,19 @@ const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
 const FILE_BASE_URL = getServerUrl().replace('/api/v1', '');
 const HTTP_OK = 200;
 
+const resolveProfileImageUrl = profileImageUrl => {
+    if (!profileImageUrl) {
+        return null;
+    }
+    return profileImageUrl.startsWith('http')
+        ? profileImageUrl
+        : `${FILE_BASE_URL}${profileImageUrl}`;
+};
+
 const dataResponse = await authCheck();
 const data = await dataResponse.json();
 const profileImage =
-    data.data.profileImagePath === undefined || data.data.profileImagePath === null
-        ? DEFAULT_PROFILE_IMAGE
-        : `${FILE_BASE_URL}${data.data.profileImagePath}`;
+    resolveProfileImageUrl(data.data.profileImageUrl) || DEFAULT_PROFILE_IMAGE;
 
 const modifyData = {
     password: '',

@@ -76,10 +76,10 @@ const addBoard = async () => {
 
         const data = await response.json();
 
-        // Spring: 201 CREATED, data.data는 Long (postId 자체)
+        // Spring: 201 CREATED, data.data는 PostIdResponse { postId: Long }
         if (response.status === HTTP_OK || response.status === HTTP_CREATED) {
             localStorage.removeItem('postFilePath');
-            window.location.href = `/html/board.html?id=${data.data}`;
+            window.location.href = `/html/board.html?id=${data.data.postId}`;
         } else {
             const helperElement = contentHelpElement;
             helperElement.textContent = '제목, 내용을 모두 작성해주세요.';
@@ -146,10 +146,9 @@ const changeEventHandler = async (event, uid) => {
             if (!response.ok) throw new Error('서버 응답 오류');
 
             const result = await response.json(); // 응답을 JSON으로 변환
-            localStorage.setItem('postFilePath', result.data.filePath);
-        } catch (error) {
-            console.error('업로드 중 오류 발생:', error);
-        }
+            // 백엔드 응답 구조: { code: "...", data: { fileUrl: "..." } }
+            localStorage.setItem('postFilePath', result.data.fileUrl);
+        } catch {}
     } else if (uid === 'imagePreviewText') {
         localStorage.removeItem('postFilePath');
         imagePreviewText.style.display = 'none';
@@ -237,9 +236,9 @@ const init = async () => {
 
     // 프로필 이미지: 기본 이미지는 FE 서버, 업로드된 이미지는 Spring 백엔드
     const profileImage =
-        data.data.profileImagePath === undefined || data.data.profileImagePath === null
+        data.data.profileImageUrl === undefined || data.data.profileImageUrl === null
             ? DEFAULT_PROFILE_IMAGE
-            : `http://localhost:8080${data.data.profileImagePath}`;
+            : data.data.profileImageUrl;
 
     prependChild(document.body, Header('커뮤니티', 1, profileImage));
 
@@ -247,8 +246,8 @@ const init = async () => {
         isModifyMode = true;
         modifyData = await getBoardModifyData(modifyId);
 
-        // Spring: data.data.userId와 modifyData.author.userId 비교 (둘 다 문자열)
-        if (data.data.userId !== modifyData.author.userId.toString()) {
+        // Spring: data.data.id와 modifyData.author.userId 비교
+        if (String(data.data.id) !== String(modifyData.author.userId)) {
             Dialog('권한 없음', '권한이 없습니다.', () => {
                 window.location.href = '/';
             });
