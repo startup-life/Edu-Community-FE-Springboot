@@ -1,4 +1,4 @@
-import { removeAccessToken, getAccessToken, getServerUrl } from '../../utils/function.js';
+import { removeAccessToken, getAccessToken, getServerUrl, clearCachedUserInfo, authenticatedFetch } from '../../utils/function.js';
 
 const DEFAULT_PROFILE_IMAGE = '/public/image/profile/default.jpg';
 
@@ -15,11 +15,21 @@ const headerDropdownMenu = () => {
 
     modifyInfoLink.href = '/html/modifyInfo.html';
     modifyPasswordLink.href = '/html/modifyPassword.html';
-    logoutLink.addEventListener('click', () => {
-        // JWT 토큰 삭제 (AccessToken은 localStorage, RefreshToken은 HttpOnly 쿠키)
-        removeAccessToken();
-        // RefreshToken은 서버에서 자동으로 만료되거나, 로그아웃 API 호출 필요
-        location.href = '/html/login.html';
+    logoutLink.addEventListener('click', async () => {
+        try {
+            // 백엔드 로그아웃 API 호출 (RefreshToken 쿠키 삭제)
+            await authenticatedFetch(`${getServerUrl()}/auth/logout`, {
+                method: 'DELETE',
+            });
+        } catch {
+            // 로그아웃 API 실패해도 로컬 정리 진행
+        } finally {
+            // AccessToken 삭제
+            removeAccessToken();
+            // 캐시된 사용자 정보 삭제
+            clearCachedUserInfo();
+            location.href = '/html/login.html';
+        }
     });
 
     wrap.classList.add('drop');

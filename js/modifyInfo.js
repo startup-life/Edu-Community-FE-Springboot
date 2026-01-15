@@ -8,6 +8,7 @@ import {
     deleteCookie,
     validNickname,
     authenticatedFetch,
+    debounce,
 } from '../utils/function.js';
 import { userModify, userDelete } from '../api/modifyInfoRequest.js';
 
@@ -33,6 +34,8 @@ const FILE_BASE_URL = getServerUrl().replace('/v1', '');
 
 const DEFAULT_PROFILE_IMAGE = '../public/image/profile/default.jpg';
 const HTTP_OK = 200;
+const INPUT_DEBOUNCE_MS = 500;
+let lastNicknameRequest = '';
 
 const resolveProfileImageUrl = profileImageUrl => {
     if (!profileImageUrl) {
@@ -104,40 +107,65 @@ const observeData = () => {
     }
 };
 
-const changeEventHandler = async (event, uid) => {
+const validateNicknameAvailability = async value => {
     const button = document.querySelector('#signupBtn');
+    const isValidNickname = validNickname(value);
+    const helperElement = nicknameHelpElement;
+
+    if (value == '' || value == null) {
+        helperElement.textContent = '*닉네임을 입력해주세요.';
+        changeData.nickname = authData.data.nickname;
+        observeData();
+        return;
+    }
+
+    if (!isValidNickname) {
+        helperElement.textContent =
+            '*닉네임은 2~10자의 영문자, 한글 또는 숫자만 사용할 수 있습니다. 특수 문자와 띄어쓰기는 사용할 수 없습니다.';
+        changeData.nickname = authData.data.nickname;
+        observeData();
+        return;
+    }
+
+    if (authData.data.nickname === value) {
+        helperElement.textContent = '';
+        button.disabled = true;
+        button.style.backgroundColor = '#ACA0EB';
+        changeData.nickname = authData.data.nickname;
+        return;
+    }
+
+    if (value === lastNicknameRequest) {
+        observeData();
+        return;
+    }
+
+    lastNicknameRequest = value;
+    const response = await checkNickname(value);
+    if (response.status === HTTP_OK) {
+        helperElement.textContent = '';
+        changeData.nickname = value;
+    } else {
+        helperElement.textContent = '*중복된 닉네임 입니다.';
+        button.disabled = true;
+        button.style.backgroundColor = '#ACA0EB';
+        changeData.nickname = authData.data.nickname;
+        return;
+    }
+
+    observeData();
+};
+
+const debouncedNicknameCheck = debounce(
+    validateNicknameAvailability,
+    INPUT_DEBOUNCE_MS,
+);
+
+const changeEventHandler = async (event, uid) => {
     if (uid == 'nickname') {
         const value = event.target.value;
-        const isValidNickname = validNickname(value);
-        const helperElement = nicknameHelpElement;
-        let isComplete = false;
-        if (value == '' || value == null) {
-            helperElement.textContent = '*닉네임을 입력해주세요.';
-        } else if (!isValidNickname) {
-            helperElement.textContent =
-                '*닉네임은 2~10자의 영문자, 한글 또는 숫자만 사용할 수 있습니다. 특수 문자와 띄어쓰기는 사용할 수 없습니다.';
-        } else {
-            const response = await checkNickname(value);
-            if (response.status === HTTP_OK) {
-                helperElement.textContent = '';
-                isComplete = true;
-            } else if (authData.data.nickname === value) {
-                helperElement.textContent = '';
-                button.disabled = true;
-                button.style.backgroundColor = '#ACA0EB';
-                return;
-            } else {
-                helperElement.textContent = '*중복된 닉네임 입니다.';
-                button.disabled = true;
-                button.style.backgroundColor = '#ACA0EB';
-                return;
-            }
-        }
-        if (isComplete) {
-            changeData.nickname = value;
-        } else {
-            changeData.nickname = authData.data.nickname;
-        }
+        changeData.nickname = authData.data.nickname;
+        debouncedNicknameCheck(value);
     } else if (uid == 'profile') {
         // 사용자가 선택한 파일
         const file = event.target.files[0];
@@ -169,9 +197,7 @@ const changeEventHandler = async (event, uid) => {
                 changeData.profileImageUrl = result.data.fileUrl;
                 profilePreview.src = resolveProfileImageUrl(result.data.fileUrl);
                 updateDeleteButtonVisibility();
-            } catch (error) {
-                console.error('업로드 중 오류 발생:', error);
-            }
+            } catch {}
         }
     }
     observeData();
@@ -222,8 +248,11 @@ const deleteAccount = async () => {
 };
 
 const addEvent = () => {
-    nicknameInputElement.addEventListener('change', event =>
+    nicknameInputElement.addEventListener('input', event =>
         changeEventHandler(event, 'nickname'),
+    );
+    nicknameInputElement.addEventListener('blur', event =>
+        validateNicknameAvailability(event.target.value),
     );
     profileInputElement.addEventListener('change', event =>
         changeEventHandler(event, 'profile'),

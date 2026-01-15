@@ -23,7 +23,6 @@ const clearViewFlags = () => {
 const getBoardItem = async (page = 0, size = 10) => {
     const response = await getPosts(page, size);
     if (!response.ok) {
-        console.error('Failed to load post list. Status:', response.status);
         throw new Error('Failed to load post list.');
     }
 
@@ -74,7 +73,6 @@ const addInfinityScrollEvent = () => {
                     setBoardItem(newItems);
                 }
             } catch (error) {
-                console.error('Error fetching new items:', error);
                 isEnd = true;
             } finally {
                 isProcessing = false;
@@ -113,7 +111,6 @@ const init = async () => {
 
         addInfinityScrollEvent();
     } catch (error) {
-        console.error('Initialization failed:', error);
         // 인증 에러면 로그인 페이지로 리다이렉션
         window.location.href = '/html/login.html';
     }

@@ -3,6 +3,7 @@ import Header from '../component/header/header.js';
 import {
     authCheckReverse,
     prependChild,
+    debounce,
     validEmail,
     validPassword,
     validNickname,
@@ -17,6 +18,7 @@ import {
 const MAX_PASSWORD_LENGTH = 20;
 const HTTP_OK = 200;
 const HTTP_CREATED = 201;
+const INPUT_DEBOUNCE_MS = 500;
 
 const signupData = {
     email: '',
@@ -24,6 +26,9 @@ const signupData = {
     nickname: '',
     profileImageUrl: undefined,
 };
+
+let lastEmailRequest = '';
+let lastNicknameRequest = '';
 
 const getSignupData = () => {
     const { email, password, passwordCheck, nickname } = signupData;
@@ -80,36 +85,100 @@ const changeEventHandler = async (event, uid) => {
     observeSignupData();
 };
 
+const validateEmailAvailability = async value => {
+    const helperElement = document.querySelector('.inputBox p[name="email"]');
+    if (!helperElement) return;
+
+    if (value === '' || value == null) {
+        helperElement.textContent = '*이메일을 입력해주세요.';
+        signupData.email = '';
+        observeSignupData();
+        return;
+    }
+
+    if (!validEmail(value)) {
+        helperElement.textContent =
+            '*올바른 이메일 주소 형식을 입력해주세요. (예: example@example.com)';
+        signupData.email = '';
+        observeSignupData();
+        return;
+    }
+
+    if (value === lastEmailRequest) {
+        observeSignupData();
+        return;
+    }
+
+    lastEmailRequest = value;
+    const response = await checkEmail(value);
+    if (response.status === HTTP_OK) {
+        helperElement.textContent = '';
+        signupData.email = value;
+    } else {
+        helperElement.textContent = '*중복된 이메일 입니다.';
+        signupData.email = '';
+    }
+    observeSignupData();
+};
+
+const validateNicknameAvailability = async value => {
+    const helperElement = document.querySelector('.inputBox p[name="nickname"]');
+    if (!helperElement) return;
+
+    if (value == '' || value == null) {
+        helperElement.textContent = '*닉네임을 입력해주세요.';
+        signupData.nickname = '';
+        observeSignupData();
+        return;
+    }
+
+    if (value.includes(' ')) {
+        helperElement.textContent = '*뛰어쓰기를 없애주세요.';
+        signupData.nickname = '';
+        observeSignupData();
+        return;
+    }
+
+    if (value.length > 10) {
+        helperElement.textContent = '*닉네임은 최대 10자까지 작성 가능합니다.';
+        signupData.nickname = '';
+        observeSignupData();
+        return;
+    }
+
+    if (!validNickname(value)) {
+        helperElement.textContent = '*닉네임에 특수 문자는 사용할 수 없습니다.';
+        signupData.nickname = '';
+        observeSignupData();
+        return;
+    }
+
+    if (value === lastNicknameRequest) {
+        observeSignupData();
+        return;
+    }
+
+    lastNicknameRequest = value;
+    const response = await checkNickname(value);
+
+    if (response.status === HTTP_OK) {
+        helperElement.textContent = '';
+        signupData.nickname = value;
+    } else {
+        helperElement.textContent = '*중복된 닉네임 입니다.';
+        signupData.nickname = '';
+    }
+    observeSignupData();
+};
+
+const debouncedEmailCheck = debounce(validateEmailAvailability, INPUT_DEBOUNCE_MS);
+const debouncedNicknameCheck = debounce(validateNicknameAvailability, INPUT_DEBOUNCE_MS);
+
 const inputEventHandler = async (event, uid) => {
     if (uid == 'email') {
         const value = event.target.value;
-        const isValidEmail = validEmail(value);
-        const helperElement = document.querySelector(
-            `.inputBox p[name="${uid}"]`,
-        );
-        let isComplete = false;
-
-        if (!helperElement) return;
-
-        if (value == '' || value == null) {
-            helperElement.textContent = '*이메일을 입력해주세요.';
-        } else if (!isValidEmail) {
-            helperElement.textContent =
-                '*올바른 이메일 주소 형식을 입력해주세요. (예: example@example.com)';
-        } else {
-            const response = await checkEmail(value);
-            if (response.status === HTTP_OK) {
-                helperElement.textContent = '';
-                isComplete = true;
-            } else {
-                helperElement.textContent = '*중복된 이메일 입니다.';
-            }
-        }
-        if (isComplete) {
-            signupData.email = value;
-        } else {
-            signupData.email = '';
-        }
+        signupData.email = '';
+        debouncedEmailCheck(value);
     } else if (uid == 'pw') {
         const value = event.target.value;
         const isValidPassword = validPassword(value);
@@ -151,38 +220,8 @@ const inputEventHandler = async (event, uid) => {
         }
     } else if (uid == 'nickname') {
         const value = event.target.value;
-        const isValidNickname = validNickname(value);
-        const helperElement = document.querySelector(
-            `.inputBox p[name="${uid}"]`,
-        );
-        let isComplete = false;
-
-        if (value == '' || value == null) {
-            helperElement.textContent = '*닉네임을 입력해주세요.';
-        } else if (value.includes(' ')) {
-            helperElement.textContent = '*뛰어쓰기를 없애주세요.';
-        } else if (value.length > 10) {
-            helperElement.textContent =
-                '*닉네임은 최대 10자까지 작성 가능합니다.';
-        } else if (!isValidNickname) {
-            helperElement.textContent =
-                '*닉네임에 특수 문자는 사용할 수 없습니다.';
-        } else {
-            const response = await checkNickname(value);
-
-            if (response.status === HTTP_OK) {
-                helperElement.textContent = '';
-                isComplete = true;
-            } else {
-                helperElement.textContent = '*중복된 닉네임 입니다.';
-            }
-        }
-
-        if (isComplete) {
-            signupData.nickname = value;
-        } else {
-            signupData.nickname = '';
-        }
+        signupData.nickname = '';
+        debouncedNicknameCheck(value);
     }
     observeSignupData();
 };
@@ -196,9 +235,17 @@ const addEventForInputElements = () => {
                 changeEventHandler(event, id),
             );
         } else {
-            element.addEventListener('input', event =>
-                inputEventHandler(event, id),
-            );
+            element.addEventListener('input', event => inputEventHandler(event, id));
+            if (id === 'email') {
+                element.addEventListener('blur', event =>
+                    validateEmailAvailability(event.target.value),
+                );
+            }
+            if (id === 'nickname') {
+                element.addEventListener('blur', event =>
+                    validateNicknameAvailability(event.target.value),
+                );
+            }
         }
     });
 };
@@ -240,8 +287,6 @@ const uploadProfileImage = () => {
             try {
                 const response = await fileUpload(formData);
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('파일 업로드 실패:', errorData);
                     throw new Error('서버 응답 오류');
                 }
 
@@ -250,11 +295,8 @@ const uploadProfileImage = () => {
                 // Spring 백엔드 응답 구조: { code: "...", data: { fileUrl: "..." } }
                 if (responseData.data && responseData.data.fileUrl) {
                     localStorage.setItem('profilePath', responseData.data.fileUrl);
-                } else {
-                    console.error('응답 데이터 구조 오류:', responseData);
                 }
             } catch (error) {
-                console.error('업로드 중 오류 발생:', error);
                 // 사용자에게 오류 알림 (선택사항)
                 const helperElement = document.querySelector('.inputBox p[name="profile"]');
                 if (helperElement) {

@@ -121,9 +121,7 @@ const setBoardDetail = data => {
                     likeIconElement.classList.add('liked');
                 }
             }
-        } catch (error) {
-            console.error('좋아요 처리 실패', error);
-        }
+        } catch {}
     });
 };
 
@@ -249,9 +247,7 @@ const init = async () => {
         if (!sessionStorage.getItem(viewKey)) {
             try {
                 await increasePostViews(pageId);
-            } catch (err) {
-                console.error('조회수 증가 실패', err);
-            } finally {
+            } catch {} finally {
                 sessionStorage.setItem(viewKey, 'true');
             }
         }
@@ -265,9 +261,7 @@ const init = async () => {
         setBoardDetail(pageData);
 
         getBoardComment(pageId).then(data => setBoardComment(data, myInfo, pageId));
-    } catch (error) {
-        console.error(error);
-    }
+    } catch {}
 };
 
 init();

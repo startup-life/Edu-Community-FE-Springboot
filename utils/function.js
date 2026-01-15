@@ -50,6 +50,22 @@ export const removeAccessToken = () => {
     localStorage.removeItem('accessToken');
 };
 
+// 사용자 정보 캐시 관리
+const USER_CACHE_KEY = 'userInfo';
+
+export const getCachedUserInfo = () => {
+    const cached = sessionStorage.getItem(USER_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+};
+
+export const setCachedUserInfo = (userInfo) => {
+    sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(userInfo));
+};
+
+export const clearCachedUserInfo = () => {
+    sessionStorage.removeItem(USER_CACHE_KEY);
+};
+
 // AccessToken 갱신
 export const refreshAccessToken = async () => {
     try {
@@ -63,7 +79,6 @@ export const refreshAccessToken = async () => {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            console.error('Token refresh failed with status:', response.status, errorData);
             throw new Error(`Token refresh failed: ${response.status}`);
         }
 
@@ -76,7 +91,6 @@ export const refreshAccessToken = async () => {
 
         throw new Error('Invalid token response');
     } catch (error) {
-        console.error('Token refresh failed:', error);
         removeAccessToken();
         throw error;
     }
@@ -112,7 +126,7 @@ export const authenticatedFetch = async (url, options = {}) => {
     return response;
 };
 
-// 인증 상태 확인
+// 인증 상태 확인 (캐싱 적용)
 export const authCheck = async () => {
     const HTTP_OK = 200;
     let accessToken = getAccessToken();
@@ -121,9 +135,21 @@ export const authCheck = async () => {
         try {
             accessToken = await refreshAccessToken();
         } catch (error) {
+            clearCachedUserInfo();
             location.href = '/html/login.html';
             return;
         }
+    }
+
+    // 캐시된 사용자 정보가 있으면 바로 반환
+    const cachedUser = getCachedUserInfo();
+    if (cachedUser) {
+        // Response 객체처럼 반환
+        return {
+            ok: true,
+            status: HTTP_OK,
+            json: async () => ({ data: cachedUser }),
+        };
     }
 
     try {
@@ -133,14 +159,22 @@ export const authCheck = async () => {
 
         if (!response || response.status !== HTTP_OK) {
             removeAccessToken();
+            clearCachedUserInfo();
             location.href = '/html/login.html';
             return;
         }
 
+        // 응답 복제 후 캐싱
+        const clonedResponse = response.clone();
+        const result = await clonedResponse.json();
+        if (result.data) {
+            setCachedUserInfo(result.data);
+        }
+
         return response;
     } catch (error) {
-        console.error('Auth check failed:', error);
         removeAccessToken();
+        clearCachedUserInfo();
         location.href = '/html/login.html';
     }
 };
@@ -239,4 +273,14 @@ export const getQueryString = param => {
 
 export const padTo2Digits = number => {
     return number.toString().padStart(2, '0');
+};
+
+export const debounce = (callback, delay = 500) => {
+    let timerId;
+    return (...args) => {
+        if (timerId) {
+            clearTimeout(timerId);
+        }
+        timerId = setTimeout(() => callback(...args), delay);
+    };
 };

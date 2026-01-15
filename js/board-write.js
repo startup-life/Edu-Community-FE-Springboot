@@ -148,9 +148,7 @@ const changeEventHandler = async (event, uid) => {
             const result = await response.json(); // 응답을 JSON으로 변환
             // 백엔드 응답 구조: { code: "...", data: { fileUrl: "..." } }
             localStorage.setItem('postFilePath', result.data.fileUrl);
-        } catch (error) {
-            console.error('업로드 중 오류 발생:', error);
-        }
+        } catch {}
     } else if (uid === 'imagePreviewText') {
         localStorage.removeItem('postFilePath');
         imagePreviewText.style.display = 'none';
